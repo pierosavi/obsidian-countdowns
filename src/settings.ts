@@ -1,18 +1,18 @@
 import {App, PluginSettingTab, Setting} from "obsidian";
-import MyPlugin from "./main";
+import CountdownsPlugin from "./main";
 
-export interface MyPluginSettings {
+export interface CountdownsSettings {
 	mySetting: string;
 }
 
-export const DEFAULT_SETTINGS: MyPluginSettings = {
+export const DEFAULT_SETTINGS: CountdownsSettings = {
 	mySetting: 'default'
 }
 
-export class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+export class CountdownsSettingTab extends PluginSettingTab {
+	plugin: CountdownsPlugin;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: CountdownsPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
