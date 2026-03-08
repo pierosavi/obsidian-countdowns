@@ -2,11 +2,13 @@ import {App, PluginSettingTab, Setting} from "obsidian";
 import CountdownsPlugin from "./main";
 
 export interface CountdownsSettings {
-	mySetting: string;
+	countdowns_folder: string;
+	bases_folder: string;
 }
 
 export const DEFAULT_SETTINGS: CountdownsSettings = {
-	mySetting: 'default'
+	countdowns_folder: 'Countdowns',
+	bases_folder: 'Countdowns/Bases',
 }
 
 export class CountdownsSettingTab extends PluginSettingTab {
@@ -23,13 +25,28 @@ export class CountdownsSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName('Settings #1')
-			.setDesc('It\'s a secret')
+			.setName('Folders')
+			.setHeading();
+
+		new Setting(containerEl)
+			.setName('Countdowns folder')
+			.setDesc('The folder where countdown notes will be created')
 			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
+				.setPlaceholder('Count down folder, e.g. "Countdowns/subfolder"')
+				.setValue(this.plugin.settings.countdowns_folder)
 				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
+					this.plugin.settings.countdowns_folder = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Bases folder')
+			.setDesc('The folder where base notes will be created')
+			.addText(text => text
+				.setPlaceholder('Bases folder, e.g. "Countdowns/Bases"')
+				.setValue(this.plugin.settings.bases_folder)
+				.onChange(async (value) => {
+					this.plugin.settings.bases_folder = value;
 					await this.plugin.saveSettings();
 				}));
 	}
