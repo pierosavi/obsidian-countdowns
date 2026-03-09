@@ -46,7 +46,7 @@ export class CountdownsSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Bases folder')
-			.setDesc('The folder where base notes will be created')
+			.setDesc('The folder where base notes will be created. Changing this will not delete the old base file automatically.')
 			.addText(text => text
 				.setPlaceholder('Bases folder, e.g. "Countdowns/Bases"')
 				.setValue(this.plugin.settings.basesFolder)
