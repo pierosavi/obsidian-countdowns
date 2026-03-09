@@ -1,5 +1,6 @@
 import {Plugin, Modal, App, Setting, Notice, moment} from 'obsidian';
 import {DEFAULT_SETTINGS, CountdownsSettings, CountdownsSettingTab} from "./settings";
+import {ensureBaseFile} from "./bases";
 
 export default class CountdownsPlugin extends Plugin {
 	settings: CountdownsSettings;
@@ -77,6 +78,7 @@ class CountdownCreationModal extends Modal {
 			});
 
 		new Setting(contentEl)
+			.setDesc('A base view will be created in your bases folder on first use.')
 			.addButton(btn => btn
 				.setButtonText('Create')
 				.setCta()
@@ -98,6 +100,8 @@ class CountdownCreationModal extends Modal {
 							if (newCountdown.repeat) fm.repeat = newCountdown.repeat;
 						});
 						this.close();
+						if (await ensureBaseFile(this.app, this.settings))
+							new Notice(`Created a Countdowns base view in "${this.settings.basesFolder}".`);
 					} catch {
 						new Notice(`A countdown named "${newCountdown.name}" already exists.`);
 					}
