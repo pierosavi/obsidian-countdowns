@@ -11,9 +11,15 @@ const BASE_FILE_NAME = 'Countdowns.base';
  * - `percentElapsed`: % of time elapsed from file creation to target date (capped display via status)
  * - `status`: "upcoming" or "past" based on target date vs today
  */
-function buildBaseContent(countdownsFolder: string): string {
-	return `filters:
-  file.inFolder("${countdownsFolder}")
+function buildBaseContent(settings: CountdownsSettings): string {
+	const filterSection = settings.countdownTag
+		? `filters:
+  and:
+    - file.inFolder("${settings.countdownsFolder}")
+    - file.hasTag("${settings.countdownTag}")`
+		: `filters:
+  file.inFolder("${settings.countdownsFolder}")`;
+	return `${filterSection}
 formulas:
   daysRemaining: "((number(date(date)) - number(today())) / 86400000).floor()"
   percentElapsed: "((number(today()) - number(file.ctime)) / (number(date(date)) - number(file.ctime)) * 100).round(1)"
@@ -45,7 +51,7 @@ const getBasePath = (settings: CountdownsSettings) => `${settings.basesFolder}/$
 async function writeBaseFile(app: App, path: string, settings: CountdownsSettings): Promise<void> {
 	if (!app.vault.getAbstractFileByPath(settings.basesFolder))
 		await app.vault.createFolder(settings.basesFolder);
-	await app.vault.create(path, buildBaseContent(settings.countdownsFolder));
+	await app.vault.create(path, buildBaseContent(settings));
 }
 
 /**

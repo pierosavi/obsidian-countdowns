@@ -5,11 +5,13 @@ import {recreateBaseFile} from "./bases";
 export interface CountdownsSettings {
 	countdownsFolder: string;
 	basesFolder: string;
+	countdownTag: string;
 }
 
 export const DEFAULT_SETTINGS: CountdownsSettings = {
 	countdownsFolder: 'Countdowns',
 	basesFolder: 'Countdowns/Bases',
+	countdownTag: 'countdown',
 }
 
 export class CountdownsSettingTab extends PluginSettingTab {
@@ -52,6 +54,18 @@ export class CountdownsSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.basesFolder)
 				.onChange(async (value) => {
 					this.plugin.settings.basesFolder = value;
+					await this.plugin.saveSettings();
+					recreateBtn.setCta();
+				}));
+
+		new Setting(containerEl)
+			.setName('Countdown tag')
+			.setDesc('Tag that identifies notes as countdowns (without the #)')
+			.addText(text => text
+				.setPlaceholder('For example: countdown')
+				.setValue(this.plugin.settings.countdownTag)
+				.onChange(async (value) => {
+					this.plugin.settings.countdownTag = value.trim();
 					await this.plugin.saveSettings();
 					recreateBtn.setCta();
 				}));

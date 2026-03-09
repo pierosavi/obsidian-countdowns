@@ -104,6 +104,7 @@ class CountdownCreationModal extends Modal {
 						await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
 							fm.date = moment(newCountdown.date).format('YYYY-MM-DD');
 							if (newCountdown.repeat) fm.repeat = newCountdown.repeat;
+							if (this.settings.countdownTag) fm.tags = [this.settings.countdownTag];
 						});
 						this.close();
 						if (await ensureBaseFile(this.app, this.settings))
