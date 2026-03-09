@@ -1,5 +1,6 @@
-import {App, PluginSettingTab, Setting} from "obsidian";
+import {App, ButtonComponent, Notice, PluginSettingTab, Setting} from "obsidian";
 import type CountdownsPlugin from "./main";
+import {recreateBaseFile} from "./bases";
 
 export interface CountdownsSettings {
 	countdownsFolder: string;
@@ -24,6 +25,9 @@ export class CountdownsSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
+		// Save reference to toggle cta when folder settings are changed
+		let recreateBtn: ButtonComponent;
+
 		new Setting(containerEl)
 			.setName('Folders')
 			.setHeading();
@@ -37,6 +41,7 @@ export class CountdownsSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.countdownsFolder = value;
 					await this.plugin.saveSettings();
+					recreateBtn.setCta();
 				}));
 
 		new Setting(containerEl)
@@ -48,6 +53,24 @@ export class CountdownsSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.basesFolder = value;
 					await this.plugin.saveSettings();
+					recreateBtn.setCta();
 				}));
+
+		new Setting(containerEl)
+			.setName('Base view')
+			.setHeading();
+
+		new Setting(containerEl)
+			.setName('Recreate base view')
+			.setDesc('Regenerates the countdowns base file using the current folder settings. Use this after changing either folder above.')
+			.addButton(btn => {
+				recreateBtn = btn;
+				btn.setButtonText('Recreate')
+					.onClick(async () => {
+						await recreateBaseFile(this.app, this.plugin.settings);
+						new Notice('Countdowns base view recreated.');
+						btn.removeCta();
+					});
+			});
 	}
 }
