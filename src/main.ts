@@ -1,31 +1,17 @@
-import {Plugin, Modal, App, Setting} from 'obsidian';
+import {Plugin, Modal, App, Setting, Notice, moment} from 'obsidian';
 import {DEFAULT_SETTINGS, CountdownsSettings, CountdownsSettingTab} from "./settings";
-import { safeCreateFile } from "./utils";
 
 export default class CountdownsPlugin extends Plugin {
 	settings: CountdownsSettings;
 
 	async onload() {
 		await this.loadSettings();
-
-		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new CountdownsSettingTab(this.app, this));
-
 		this.addCommand({
 			id: 'create-new-countdown',
 			name: 'Create new countdown',
-			editorCallback: () => {
-				this.openCountdownCreationModal();
-			}
+			callback: () => new CountdownCreationModal(this.app, this.settings).open(),
 		});
-	}
-
-	openCountdownCreationModal() {
-		// Open a modal to create a new countdown
-		new CountdownCreationModal(this.app, this.settings).open();
-	}
-
-	onunload() {
 	}
 
 	async loadSettings() {
@@ -49,7 +35,7 @@ class CountdownCreationModal extends Modal {
 
 		contentEl.createEl('h2', {text: 'Create a new countdown'});
 
-		const newCountdown = new Countdown('', '');
+		const newCountdown: Countdown = { name: '', content: '', date: new Date(), repeat: null };
 
 		new Setting(contentEl)
 			.setName('Name')
@@ -59,18 +45,28 @@ class CountdownCreationModal extends Modal {
 				.onChange(value => { newCountdown.name = value; }));
 
 		new Setting(contentEl)
+			.setName('Date')
+			.setDesc('The target date for this countdown.')
+			.addText(text => {
+				text.inputEl.type = 'date';
+				text.onChange(value => { newCountdown.date = new Date(value); });
+			});
+
+		new Setting(contentEl)
 			.setName('Content')
-			.setDesc('The content of the countdown note you can use Markdown here')
-			// eslint-disable-next-line no-undef
-			.setDesc(createFragment((el) => {
-				el.appendText("The content of the countdown note.");
-				el.createEl("br");
-				el.appendText("You can use markdown here.");
-			}))
+			.setDesc((() => {
+				const frag = document.createDocumentFragment();
+				frag.append(
+					'The content of the countdown note.',
+					document.createElement('br'),
+					'You can use Markdown here.'
+				);
+				return frag;
+			})())
 			.addTextArea(text => {
 				text
 					.setPlaceholder('Countdown content')
-					.onChange(value => { newCountdown.content = value; })
+					.onChange(value => { newCountdown.content = value; });
 				text.inputEl.rows = 6;
 				text.inputEl.cols = 25;
 			});
@@ -80,8 +76,19 @@ class CountdownCreationModal extends Modal {
 				.setButtonText('Create')
 				.setCta()
 				.onClick(async () => {
-					this.close();
-					await safeCreateFile(this.app.vault, `${this.settings.countdowns_folder}/${newCountdown.name}.md`, newCountdown.content);
+					const path = `${this.settings.countdownsFolder}/${newCountdown.name}.md`;
+					try {
+						if (!this.app.vault.getAbstractFileByPath(this.settings.countdownsFolder))
+						await this.app.vault.createFolder(this.settings.countdownsFolder);
+						const file = await this.app.vault.create(path, newCountdown.content);
+						await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+							fm.date = moment(newCountdown.date).format('YYYY-MM-DD');
+							if (newCountdown.repeat) fm.repeat = newCountdown.repeat;
+						});
+						this.close();
+					} catch {
+						new Notice(`A countdown named "${newCountdown.name}" already exists.`);
+					}
 				}));
 	}
 
@@ -91,12 +98,9 @@ class CountdownCreationModal extends Modal {
 	}
 }
 
-class Countdown {
+interface Countdown {
 	name: string;
 	content: string;
-	
-	constructor(name: string, content: string) {
-		this.name = name;
-		this.content = content;
-	}
+	date: Date;
+	repeat: string | null;
 }
