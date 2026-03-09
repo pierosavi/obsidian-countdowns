@@ -23,6 +23,11 @@ export default class CountdownsPlugin extends Plugin {
 	}
 }
 
+/**
+ * Modal dialog for creating a new countdown note.
+ * Collects name, target date, and optional content from the user,
+ * then creates a Markdown note with YAML frontmatter in the configured folder.
+ */
 class CountdownCreationModal extends Modal {
 	settings: CountdownsSettings;
 	constructor(app: App, settings: CountdownsSettings) {
@@ -78,9 +83,16 @@ class CountdownCreationModal extends Modal {
 				.onClick(async () => {
 					const path = `${this.settings.countdownsFolder}/${newCountdown.name}.md`;
 					try {
+						// Create the folder if it doesn't exist yet
 						if (!this.app.vault.getAbstractFileByPath(this.settings.countdownsFolder))
-						await this.app.vault.createFolder(this.settings.countdownsFolder);
+							await this.app.vault.createFolder(this.settings.countdownsFolder);
+
 						const file = await this.app.vault.create(path, newCountdown.content);
+
+						// Write frontmatter via Obsidian's API so it handles YAML serialisation correctly.
+						// date is stored as a YYYY-MM-DD string — YAML has no native date type.
+						// Obsidian infers the property as a date from this format, enabling Bases date queries.
+						// repeat stores an RRULE string (RFC 5545) for recurring countdowns.
 						await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
 							fm.date = moment(newCountdown.date).format('YYYY-MM-DD');
 							if (newCountdown.repeat) fm.repeat = newCountdown.repeat;
@@ -98,9 +110,17 @@ class CountdownCreationModal extends Modal {
 	}
 }
 
+/**
+ * Represents a countdown event.
+ * Serialised as a Markdown note with YAML frontmatter in the countdowns folder.
+ */
 interface Countdown {
+	/** Note file name and display title. */
 	name: string;
+	/** Markdown body of the note. */
 	content: string;
+	/** Target date of the countdown. Serialised as a YYYY-MM-DD string in frontmatter (YAML has no native date type). */
 	date: Date;
+	/** Optional RRULE string (RFC 5545) for recurring countdowns, e.g. "RRULE:FREQ=YEARLY". */
 	repeat: string | null;
 }
