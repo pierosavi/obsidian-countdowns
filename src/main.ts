@@ -41,6 +41,7 @@ class CountdownCreationModal extends Modal {
 
 		contentEl.createEl('h2', {text: 'Create a new countdown'});
 
+		const today = moment().format('YYYY-MM-DD');
 		const newCountdown: Countdown = { name: '', content: '', date: new Date(), repeat: null };
 
 		new Setting(contentEl)
@@ -48,13 +49,14 @@ class CountdownCreationModal extends Modal {
 			.setDesc('This will be used as the file name.')
 			.addText(text => text
 				.setPlaceholder('Countdown name')
-				.onChange(value => { newCountdown.name = value; }));
+				.onChange(value => { newCountdown.name = value.trim(); }));
 
 		new Setting(contentEl)
 			.setName('Date')
 			.setDesc('The target date for this countdown.')
 			.addText(text => {
 				text.inputEl.type = 'date';
+				text.inputEl.value = today;
 				text.onChange(value => { newCountdown.date = new Date(value); });
 			});
 
@@ -83,6 +85,10 @@ class CountdownCreationModal extends Modal {
 				.setButtonText('Create')
 				.setCta()
 				.onClick(async () => {
+					if (!newCountdown.name) {
+						new Notice('Please enter a name for the countdown.');
+						return;
+					}
 					const path = `${this.settings.countdownsFolder}/${newCountdown.name}.md`;
 					try {
 						// Create the folder if it doesn't exist yet
