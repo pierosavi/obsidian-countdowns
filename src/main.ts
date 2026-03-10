@@ -1,6 +1,6 @@
 import {Plugin, Modal, App, Setting, Notice, moment} from 'obsidian';
 import {DEFAULT_SETTINGS, CountdownsSettings, CountdownsSettingTab} from "./settings";
-import {ensureBaseFile} from "./bases";
+import {ensureBaseFile, recreateBaseFile} from "./bases";
 
 export default class CountdownsPlugin extends Plugin {
 	settings: CountdownsSettings;
@@ -12,6 +12,14 @@ export default class CountdownsPlugin extends Plugin {
 			id: 'create-new-countdown',
 			name: 'Create new countdown',
 			callback: () => new CountdownCreationModal(this.app, this.settings).open(),
+		});
+		this.addCommand({
+			id: 'regenerate-base',
+			name: 'Regenerate base view',
+			callback: async () => {
+				await recreateBaseFile(this.app, this.settings);
+				new Notice('Countdowns base view regenerated.');
+			},
 		});
 	}
 
