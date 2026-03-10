@@ -8,8 +8,7 @@ const BASE_FILE_NAME = 'Countdowns.base';
  *
  * Formulas:
  * - `daysRemaining`: days from today to the target `date` (negative = past)
- * - `percentElapsed`: % of time elapsed from file creation to target date (capped display via status)
- * - `status`: "upcoming" or "past" based on target date vs today
+ * - `isOverdue`, `isToday`, `isThisWeek`, `isThisMonth`, `isFuture`: boolean urgency categories
  */
 function buildBaseContent(settings: CountdownsSettings): string {
 	const filterSection = settings.countdownTag
@@ -22,17 +21,26 @@ function buildBaseContent(settings: CountdownsSettings): string {
 	return `${filterSection}
 formulas:
   daysRemaining: "((number(date(date)) - number(today())) / 86400000).floor()"
-  percentElapsed: "((number(today()) - number(file.ctime)) / (number(date(date)) - number(file.ctime)) * 100).round(1)"
-  status: 'if(date(date) > today(), "upcoming", "past")'
+  isOverdue: "formula.daysRemaining < 0"
+  isToday: "formula.daysRemaining == 0"
+  isThisWeek: "formula.daysRemaining >= 0 && formula.daysRemaining <= 7"
+  isThisMonth: "formula.daysRemaining >= 0 && formula.daysRemaining <= 30"
+  isFuture: "formula.daysRemaining > 30"
 properties:
   date:
     displayName: Target date
   formula.daysRemaining:
     displayName: Days remaining
-  formula.percentElapsed:
-    displayName: "% elapsed"
-  formula.status:
-    displayName: Status
+  formula.isOverdue:
+    displayName: Overdue
+  formula.isToday:
+    displayName: Today
+  formula.isThisWeek:
+    displayName: This week
+  formula.isThisMonth:
+    displayName: This month
+  formula.isFuture:
+    displayName: Future
 views:
   - type: cards
     name: Countdowns
@@ -40,8 +48,11 @@ views:
       - file.name
       - note.date
       - formula.daysRemaining
-      - formula.percentElapsed
-      - formula.status
+      - formula.isOverdue
+      - formula.isToday
+      - formula.isThisWeek
+      - formula.isThisMonth
+      - formula.isFuture
 `;
 }
 
