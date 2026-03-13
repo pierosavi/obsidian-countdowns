@@ -1,10 +1,32 @@
-import {Plugin, Modal, App, Setting, Notice, TFile, moment} from 'obsidian';
+import {Plugin, Modal, App, Setting, Notice, TFile, TFolder, moment} from 'obsidian';
 import {DEFAULT_SETTINGS, CountdownsSettings, CountdownsSettingTab} from "./settings";
 import {ensureBaseFile, recreateBaseFile} from "./bases";
 import {REPEAT_PRESETS, isValidRRule, effectiveDate} from "./repeat";
 
 export default class CountdownsPlugin extends Plugin {
 	settings: CountdownsSettings;
+
+	/** Recursively get all countdown notes from the configured folder, filtered by tag if set. */
+	getCountdownNotes(): TFile[] {
+		const folder = this.app.vault.getFolderByPath(this.settings.countdownsFolder);
+		if (!folder) return [];
+		const tag = this.settings.countdownTag ? this.settings.countdownTag : null;
+		const files: TFile[] = [];
+		const collect = (f: TFolder) => {
+			for (const child of f.children) {
+				if (child instanceof TFile && child.extension === 'md') {
+					const cache = this.app.metadataCache.getFileCache(child);
+					const tagsArray = Array.isArray(cache?.frontmatter?.tags) ? cache.frontmatter.tags as string[] : [];
+					if (tag === null || tagsArray.includes(tag))
+						files.push(child);
+				} else if (child instanceof TFolder) {
+					collect(child);
+				}
+			}
+		};
+		collect(folder);
+		return files;
+	}
 
 	/** Check whether a file is a countdown note (correct folder + tag if configured). */
 	isCountdownNote(file: TFile): boolean {
