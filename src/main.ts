@@ -6,19 +6,27 @@ import {REPEAT_PRESETS, isValidRRule, effectiveDate} from "./repeat";
 export default class CountdownsPlugin extends Plugin {
 	settings: CountdownsSettings;
 
+	/** Check whether a file has satisfies tag requirement. */
+	private hasCountdownTag(file: TFile): boolean {
+		if (!this.settings.countdownTag) return true;
+		const tags = this.app.metadataCache.getFileCache(file)?.frontmatter?.tags as string[] | undefined;
+		return Array.isArray(tags) && tags.includes(this.settings.countdownTag);
+	}
+
+	/** Check whether a file is a countdown note (correct folder + tag if configured). */
+	isCountdownNote(file: TFile): boolean {
+		return file.path.startsWith(this.settings.countdownsFolder + '/') && this.hasCountdownTag(file);
+	}
+
 	/** Recursively get all countdown notes from the configured folder, filtered by tag if set. */
 	getCountdownNotes(): TFile[] {
 		const folder = this.app.vault.getFolderByPath(this.settings.countdownsFolder);
 		if (!folder) return [];
-		const tag = this.settings.countdownTag ? this.settings.countdownTag : null;
 		const files: TFile[] = [];
 		const collect = (f: TFolder) => {
 			for (const child of f.children) {
 				if (child instanceof TFile && child.extension === 'md') {
-					const cache = this.app.metadataCache.getFileCache(child);
-					const tagsArray = Array.isArray(cache?.frontmatter?.tags) ? cache.frontmatter.tags as string[] : [];
-					if (tag === null || tagsArray.includes(tag))
-						files.push(child);
+					if (this.hasCountdownTag(child)) files.push(child);
 				} else if (child instanceof TFolder) {
 					collect(child);
 				}
@@ -26,16 +34,6 @@ export default class CountdownsPlugin extends Plugin {
 		};
 		collect(folder);
 		return files;
-	}
-
-	/** Check whether a file is a countdown note (correct folder + tag if configured). */
-	isCountdownNote(file: TFile): boolean {
-		if (!file.path.startsWith(this.settings.countdownsFolder + '/')) return false;
-		if (this.settings.countdownTag) {
-			const cache = this.app.metadataCache.getFileCache(file);
-			if (!cache?.tags?.some(t => t.tag === '#' + this.settings.countdownTag)) return false;
-		}
-		return true;
 	}
 
 	async onload() {
