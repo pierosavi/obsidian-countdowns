@@ -5,10 +5,6 @@ const BASE_FILE_NAME = 'Countdowns.base';
 
 /**
  * Generates the YAML content for the default Countdowns base file.
- *
- * Formulas:
- * - `daysRemaining`: days from today to the target `date` (negative = past)
- * - `isOverdue`, `isToday`, `isThisWeek`, `isThisMonth`, `isFuture`: boolean urgency categories
  */
 function buildBaseContent(settings: CountdownsSettings): string {
 	const filterSection = settings.countdownTag
@@ -21,45 +17,36 @@ function buildBaseContent(settings: CountdownsSettings): string {
 	return `${filterSection}
 formulas:
   target: "date(if(nextDate, nextDate, date))"
-  daysRemaining: "((number(formula.target) - number(today())) / 86400000).floor()"
-  isOverdue: "formula.daysRemaining < 0"
-  isToday: "formula.daysRemaining == 0"
-  isThisWeek: "formula.daysRemaining >= 0 && formula.daysRemaining <= 7"
-  isThisMonth: "formula.daysRemaining >= 0 && formula.daysRemaining <= 30"
-  isFuture: "formula.daysRemaining > 30"
+  diffMs: "(number(formula.target) - number(now()))"
+  absDiffMs: "formula.diffMs.abs()"
+  totalSeconds: "(formula.absDiffMs / 1000).floor()"
+  totalMinutes: "(formula.absDiffMs / 60000).floor()"
+  totalHours: "(formula.absDiffMs / 3600000).floor()"
+  totalDays: "(formula.absDiffMs / 86400000).floor()"
+  totalMonths: "(formula.totalDays / 30).floor()"
+  totalYears: "(formula.totalDays / 365).floor()"
+  label: 'if(formula.totalYears >= 1, formula.totalYears + if(formula.totalYears == 1, " year", " years"), if(formula.totalMonths >= 1, formula.totalMonths + if(formula.totalMonths == 1, " month", " months"), if(formula.totalDays >= 1, formula.totalDays + if(formula.totalDays == 1, " day", " days"), if(formula.totalHours >= 1, formula.totalHours + if(formula.totalHours == 1, " hour", " hours"), if(formula.totalMinutes >= 1, formula.totalMinutes + if(formula.totalMinutes == 1, " minute", " minutes"), formula.totalSeconds + if(formula.totalSeconds == 1, " second", " seconds"))))))'
+  isPast: "formula.diffMs < 0"
+  isFuture: "!formula.isPast"
+  isOverdue: "formula.isPast"
+  isToday: "formula.totalDays == 0"
+  isThisWeek: "formula.totalDays >= 0 && formula.totalDays <= 7 && !formula.isPast"
+  isThisMonth: "formula.totalDays >= 0 && formula.totalDays <= 30 && !formula.isPast"
+  relative: 'if(formula.isPast, formula.label + " ago", "in " + formula.label)'
 properties:
-  date:
-    displayName: Original date
+  formula.relative:
+    displayName: Relative
   nextDate:
-    displayName: Next date
-  repeat:
-    displayName: Repeat
-  formula.daysRemaining:
-    displayName: Days remaining
-  formula.isOverdue:
-    displayName: Overdue
-  formula.isToday:
-    displayName: Today
-  formula.isThisWeek:
-    displayName: This week
-  formula.isThisMonth:
-    displayName: This month
-  formula.isFuture:
-    displayName: Future
+    displayName: Next Date
 views:
   - type: cards
     name: Countdowns
     order:
       - file.name
-      - note.date
-      - note.nextDate
-      - note.repeat
-      - formula.daysRemaining
-      - formula.isOverdue
-      - formula.isToday
-      - formula.isThisWeek
-      - formula.isThisMonth
-      - formula.isFuture
+      - formula.relative
+    sort:
+      - property: formula.diffMs
+        direction: ASC
 `;
 }
 
