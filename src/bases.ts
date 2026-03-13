@@ -20,7 +20,8 @@ function buildBaseContent(settings: CountdownsSettings): string {
   file.inFolder("${settings.countdownsFolder}")`;
 	return `${filterSection}
 formulas:
-  daysRemaining: "((number(date(date)) - number(today())) / 86400000).floor()"
+  target: "date(if(nextDate, nextDate, date))"
+  daysRemaining: "((number(formula.target) - number(today())) / 86400000).floor()"
   isOverdue: "formula.daysRemaining < 0"
   isToday: "formula.daysRemaining == 0"
   isThisWeek: "formula.daysRemaining >= 0 && formula.daysRemaining <= 7"
@@ -28,7 +29,11 @@ formulas:
   isFuture: "formula.daysRemaining > 30"
 properties:
   date:
-    displayName: Target date
+    displayName: Original date
+  nextDate:
+    displayName: Next date
+  repeat:
+    displayName: Repeat
   formula.daysRemaining:
     displayName: Days remaining
   formula.isOverdue:
@@ -47,6 +52,8 @@ views:
     order:
       - file.name
       - note.date
+      - note.nextDate
+      - note.repeat
       - formula.daysRemaining
       - formula.isOverdue
       - formula.isToday

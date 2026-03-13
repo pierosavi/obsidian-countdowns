@@ -1,9 +1,20 @@
-import {Plugin, Modal, App, Setting, Notice, moment} from 'obsidian';
+import {Plugin, Modal, App, Setting, Notice, TFile, moment} from 'obsidian';
 import {DEFAULT_SETTINGS, CountdownsSettings, CountdownsSettingTab} from "./settings";
 import {ensureBaseFile, recreateBaseFile} from "./bases";
+import {REPEAT_PRESETS, isValidRRule, effectiveDate} from "./repeat";
 
 export default class CountdownsPlugin extends Plugin {
 	settings: CountdownsSettings;
+
+	/** Check whether a file is a countdown note (correct folder + tag if configured). */
+	isCountdownNote(file: TFile): boolean {
+		if (!file.path.startsWith(this.settings.countdownsFolder + '/')) return false;
+		if (this.settings.countdownTag) {
+			const cache = this.app.metadataCache.getFileCache(file);
+			if (!cache?.tags?.some(t => t.tag === '#' + this.settings.countdownTag)) return false;
+		}
+		return true;
+	}
 
 	async onload() {
 		await this.loadSettings();
@@ -20,6 +31,48 @@ export default class CountdownsPlugin extends Plugin {
 				await recreateBaseFile(this.app, this.settings);
 				new Notice('Countdowns base view regenerated.');
 			},
+		});
+
+		// Keep nextDate in sync when date or repeat changes
+		this.registerEvent(
+			this.app.metadataCache.on('changed', (file) => {
+				if (this.isCountdownNote(file)) void this.refreshNextDate(file);
+			})
+		);
+
+		// Refresh stale notes on startup, then every hour at :00
+		this.app.workspace.onLayoutReady(() => {
+			void this.refreshStaleNotes();
+			const msToNextHour = moment().endOf('hour').diff(moment()) + 1;
+			const timeout = window.setTimeout(() => {
+				void this.refreshStaleNotes();
+				this.registerInterval(window.setInterval(() => void this.refreshStaleNotes(), 3600000));
+			}, msToNextHour);
+			this.register(() => window.clearTimeout(timeout));
+		});
+	}
+
+	/** Scan all countdown notes and update any with a stale nextDate. */
+	async refreshStaleNotes() {
+		const today = moment().format('YYYY-MM-DD');
+		for (const file of this.app.vault.getMarkdownFiles()) {
+			if (!this.isCountdownNote(file)) continue;
+			const fm = this.app.metadataCache.getFileCache(file)?.frontmatter;
+			if (!fm?.date || !fm.repeat) continue;
+			if (!fm.nextDate || fm.nextDate < today)
+				await this.refreshNextDate(file);
+		}
+	}
+
+	/** Recompute nextDate for a single file if date or repeat changed. */
+	async refreshNextDate(file: TFile) {
+		await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+			if (!fm.date) return;
+			const dtstart = new Date(fm.date as string);
+			const next = effectiveDate(dtstart, (fm.repeat as string) ?? null);
+			const nextStr = moment.utc(next).format('YYYY-MM-DD');
+			if (fm.nextDate === nextStr) return;
+			fm.nextDate = nextStr;
 		});
 	}
 
@@ -87,6 +140,36 @@ class CountdownCreationModal extends Modal {
 				text.inputEl.cols = 25;
 			});
 
+		let customRepeatSetting: Setting;
+
+		new Setting(contentEl)
+			.setName('Repeat')
+			.setDesc('How often this countdown recurs.')
+			.addDropdown(dd => {
+				for (const p of REPEAT_PRESETS) dd.addOption(p.value, p.label);
+				dd.addOption('custom', 'Custom...');
+				dd.onChange(value => {
+					if (value === 'custom') {
+						newCountdown.repeat = '';
+						customRepeatSetting.settingEl.show();
+					} else {
+						newCountdown.repeat = value || null;
+						customRepeatSetting.settingEl.hide();
+					}
+				});
+			});
+
+		customRepeatSetting = new Setting(contentEl)
+			.setName('Custom rule')
+			.setDesc('Enter a valid recurrence rule string.')
+			.addText(text => text
+				// eslint-disable-next-line obsidianmd/ui/sentence-case
+				.setPlaceholder('FREQ=WEEKLY;INTERVAL=2')
+				.onChange(value => {
+					newCountdown.repeat = value.trim() || null;
+				}));
+		customRepeatSetting.settingEl.hide();
+
 		new Setting(contentEl)
 			.setDesc('A base view will be created in your bases folder on first use.')
 			.addButton(btn => btn
@@ -95,6 +178,10 @@ class CountdownCreationModal extends Modal {
 				.onClick(async () => {
 					if (!newCountdown.name) {
 						new Notice('Please enter a name for the countdown.');
+						return;
+					}
+					if (newCountdown.repeat !== null && !isValidRRule(newCountdown.repeat)) {
+						new Notice('Invalid repeat rule. Please enter a valid recurrence rule string.');
 						return;
 					}
 					const path = `${this.settings.countdownsFolder}/${newCountdown.name}.md`;
@@ -110,8 +197,9 @@ class CountdownCreationModal extends Modal {
 						// Obsidian infers the property as a date from this format, enabling Bases date queries.
 						// repeat stores an RRULE string (RFC 5545) for recurring countdowns.
 						await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
-							fm.date = moment(newCountdown.date).format('YYYY-MM-DD');
+							fm.date = moment.utc(newCountdown.date).format('YYYY-MM-DD');
 							if (newCountdown.repeat) fm.repeat = newCountdown.repeat;
+							fm.nextDate = moment.utc(effectiveDate(newCountdown.date, newCountdown.repeat)).format('YYYY-MM-DD');
 							if (this.settings.countdownTag) fm.tags = [this.settings.countdownTag];
 						});
 						this.close();
