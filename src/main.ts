@@ -69,18 +69,27 @@ export default class CountdownsPlugin extends Plugin {
 				this.registerInterval(window.setInterval(() => void this.refreshStaleNotes(), 3600000));
 			}, msToNextHour);
 			this.register(() => window.clearTimeout(timeout));
+
+			// Touch frontmatter every 5s to force base to recalculate date formulas, this needs to be optimized
+			this.registerInterval(window.setInterval(() => void this.touchCountdownNotes(), 5000));
 		});
 	}
 
 	/** Scan all countdown notes and update any with a stale nextDate. */
 	async refreshStaleNotes() {
 		const today = moment().format('YYYY-MM-DD');
-		for (const file of this.app.vault.getMarkdownFiles()) {
-			if (!this.isCountdownNote(file)) continue;
+		for (const file of this.getCountdownNotes()) {
 			const fm = this.app.metadataCache.getFileCache(file)?.frontmatter;
 			if (!fm?.date || !fm.repeat) continue;
 			if (!fm.nextDate || fm.nextDate < today)
 				await this.refreshNextDate(file);
+		}
+	}
+
+	/** Force formula recalculation */
+	touchCountdownNotes() {
+		for (const file of this.getCountdownNotes()) {
+			this.app.metadataCache.trigger('changed', file);
 		}
 	}
 
