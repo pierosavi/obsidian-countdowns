@@ -1,6 +1,6 @@
 import {Plugin, Notice, TFile, TFolder, moment, getFrontMatterInfo} from 'obsidian';
 import {DEFAULT_SETTINGS, CountdownsSettings, CountdownsSettingTab} from "./settings";
-import {recreateBaseFile} from "./bases";
+import {recreateBaseFile, ensureBaseFile, getBasePath} from "./bases";
 import {effectiveDate} from "./repeat";
 import {IntervalManager} from "./interval-manager";
 import {CountdownCreationModal} from "./creationModal";
@@ -107,6 +107,19 @@ export default class CountdownsPlugin extends Plugin {
 				await recreateBaseFile(this.app, this.settings);
 				new Notice('Countdowns base view regenerated.');
 			},
+		});
+
+		this.addRibbonIcon('timer', 'Open countdowns', async () => {
+			const path = getBasePath(this.settings);
+			const file = this.app.vault.getAbstractFileByPath(path);
+			if (file instanceof TFile) {
+				await this.app.workspace.getLeaf().openFile(file);
+			} else {
+				await ensureBaseFile(this.app, this.settings);
+				const created = this.app.vault.getAbstractFileByPath(path);
+				if (created instanceof TFile)
+					await this.app.workspace.getLeaf().openFile(created);
+			}
 		});
 
 		// Keep nextDate in sync when date or repeat changes, and re-evaluate interval tiers

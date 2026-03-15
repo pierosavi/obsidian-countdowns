@@ -49,7 +49,7 @@ views:
 `;
 }
 
-const getBasePath = (settings: CountdownsSettings) => `${settings.basesFolder}/${BASE_FILE_NAME}`;
+export const getBasePath = (settings: CountdownsSettings) => `${settings.basesFolder}/${BASE_FILE_NAME}`;
 
 /** Ensures the bases folder exists and writes the base file at `path`. */
 async function writeBaseFile(app: App, path: string, settings: CountdownsSettings): Promise<void> {
