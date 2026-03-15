@@ -1,4 +1,4 @@
-import {Plugin, Notice, TFile, TFolder, moment} from 'obsidian';
+import {Plugin, Notice, TFile, TFolder, moment, getFrontMatterInfo} from 'obsidian';
 import {DEFAULT_SETTINGS, CountdownsSettings, CountdownsSettingTab} from "./settings";
 import {recreateBaseFile} from "./bases";
 import {effectiveDate} from "./repeat";
@@ -57,6 +57,28 @@ export default class CountdownsPlugin extends Plugin {
 		return files;
 	}
 
+	/** Read a countdown note and open the edit modal with prefilled values. */
+	private async openEditModal(file: TFile) {
+		const fm = this.app.metadataCache.getFileCache(file)?.frontmatter;
+		if (!fm?.date) {
+			new Notice('Could not read countdown data from this note.');
+			return;
+		}
+		const dateStr = fm.date as string;
+		const hasTimeComponent = dateStr.includes('T');
+		const m = moment(dateStr);
+		const raw = await this.app.vault.read(file);
+		const content = raw.slice(getFrontMatterInfo(raw).contentStart).trimStart();
+		const countdown: Countdown = {
+			name: file.basename,
+			content,
+			date: m.toDate(),
+			time: hasTimeComponent ? m.format('HH:mm') : null,
+			repeat: (fm.repeat as string) ?? null,
+		};
+		new CountdownCreationModal(this.app, this.settings, file, countdown).open();
+	}
+
 	async onload() {
 		await this.loadSettings();
 		this.addSettingTab(new CountdownsSettingTab(this.app, this));
@@ -64,6 +86,19 @@ export default class CountdownsPlugin extends Plugin {
 			id: 'create-new-countdown',
 			name: 'Create new countdown',
 			callback: () => new CountdownCreationModal(this.app, this.settings).open(),
+		});
+		this.addCommand({
+			id: 'edit-countdown',
+			name: 'Edit countdown',
+			checkCallback: (checking: boolean) => {
+				const file = this.app.workspace.getActiveFile();
+				if (!file || !this.isCountdownNote(file)) {
+					if (!checking) new Notice('The active note is not a countdown.');
+					return false;
+				}
+				if (!checking) void this.openEditModal(file);
+				return true;
+			},
 		});
 		this.addCommand({
 			id: 'regenerate-base',
