@@ -114,7 +114,21 @@ export class CountdownCreationModal extends Modal {
 
 		customRepeatSetting = new Setting(contentEl)
 			.setName('Custom rule')
-			.setDesc('Enter a valid recurrence rule string.')
+			.setDesc((() => {
+				const frag = document.createDocumentFragment();
+				const link = document.createElement('a');
+				link.textContent = 'RRULEs demo editor.';
+				link.href = 'https://jkbrzt.github.io/rrule/';
+				link.target = '_blank';
+				frag.append(
+					'Enter a custom RRULE.',
+					document.createElement('br'),
+					link,
+					document.createElement('br'),
+					'Example: FREQ=WEEKLY;INTERVAL=2 for every 2 weeks.'
+				);
+				return frag;
+			})())
 			.addText(text => text
 				// eslint-disable-next-line obsidianmd/ui/sentence-case
 				.setPlaceholder('FREQ=WEEKLY;INTERVAL=2')
