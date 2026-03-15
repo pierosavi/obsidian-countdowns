@@ -2,9 +2,11 @@ import {Plugin, Modal, App, Setting, Notice, TFile, TFolder, moment} from 'obsid
 import {DEFAULT_SETTINGS, CountdownsSettings, CountdownsSettingTab} from "./settings";
 import {ensureBaseFile, recreateBaseFile} from "./bases";
 import {REPEAT_PRESETS, isValidRRule, effectiveDate} from "./repeat";
+import {IntervalManager} from "./interval-manager";
 
 export default class CountdownsPlugin extends Plugin {
 	settings: CountdownsSettings;
+	private intervalManager: IntervalManager | null = null;
 
 	/** Check whether a file has satisfies tag requirement. */
 	private hasCountdownTag(file: TFile): boolean {
@@ -53,10 +55,12 @@ export default class CountdownsPlugin extends Plugin {
 			},
 		});
 
-		// Keep nextDate in sync when date or repeat changes
+		// Keep nextDate in sync when date or repeat changes, and re-evaluate interval tiers
 		this.registerEvent(
 			this.app.metadataCache.on('changed', (file) => {
-				if (this.isCountdownNote(file)) void this.refreshNextDate(file);
+				if (this.isCountdownNote(file)) {
+					this.intervalManager?.scheduleEvaluate();
+				}
 			})
 		);
 
@@ -70,8 +74,16 @@ export default class CountdownsPlugin extends Plugin {
 			}, msToNextHour);
 			this.register(() => window.clearTimeout(timeout));
 
-			// Touch frontmatter every 5s to force base to recalculate date formulas, this needs to be optimized
-			this.registerInterval(window.setInterval(() => void this.touchCountdownNotes(), 5000));
+			this.intervalManager = new IntervalManager({
+				getCountdownNotes: () => this.getCountdownNotes(),
+				metadataCache: this.app.metadataCache,
+			});
+			this.registerEvent(this.app.vault.on('delete', (file) => {
+				if (file instanceof TFile && this.intervalManager?.isTracked(file.path)) {
+					this.intervalManager.scheduleEvaluate();
+				}
+			}));
+			this.register(() => this.intervalManager?.stop());
 		});
 	}
 
@@ -86,20 +98,13 @@ export default class CountdownsPlugin extends Plugin {
 		}
 	}
 
-	/** Force formula recalculation */
-	touchCountdownNotes() {
-		for (const file of this.getCountdownNotes()) {
-			this.app.metadataCache.trigger('changed', file);
-		}
-	}
-
 	/** Recompute nextDate for a single file if date or repeat changed. */
 	async refreshNextDate(file: TFile) {
 		await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
 			if (!fm.date) return;
-			const dtstart = new Date(fm.date as string);
+			const dtstart = moment(fm.date as string, 'YYYY-MM-DD').toDate();
 			const next = effectiveDate(dtstart, (fm.repeat as string) ?? null);
-			const nextStr = moment.utc(next).format('YYYY-MM-DD');
+			const nextStr = moment(next).format('YYYY-MM-DD');
 			if (fm.nextDate === nextStr) return;
 			fm.nextDate = nextStr;
 		});
@@ -147,7 +152,7 @@ class CountdownCreationModal extends Modal {
 			.addText(text => {
 				text.inputEl.type = 'date';
 				text.inputEl.value = today;
-				text.onChange(value => { newCountdown.date = new Date(value); });
+				text.onChange(value => { newCountdown.date = moment(value, 'YYYY-MM-DD').toDate(); });
 			});
 
 		new Setting(contentEl)
@@ -226,9 +231,9 @@ class CountdownCreationModal extends Modal {
 						// Obsidian infers the property as a date from this format, enabling Bases date queries.
 						// repeat stores an RRULE string (RFC 5545) for recurring countdowns.
 						await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
-							fm.date = moment.utc(newCountdown.date).format('YYYY-MM-DD');
+							fm.date = moment(newCountdown.date).format('YYYY-MM-DD');
 							if (newCountdown.repeat) fm.repeat = newCountdown.repeat;
-							fm.nextDate = moment.utc(effectiveDate(newCountdown.date, newCountdown.repeat)).format('YYYY-MM-DD');
+							fm.nextDate = moment(effectiveDate(newCountdown.date, newCountdown.repeat)).format('YYYY-MM-DD');
 							if (this.settings.countdownTag) fm.tags = [this.settings.countdownTag];
 						});
 						this.close();
