@@ -1,6 +1,6 @@
 # Countdowns
 
-An [Obsidian](https://obsidian.md) plugin that lets you create and manage countdowns using [Bases](https://obsidian.md/blog/bases/).
+An [Obsidian](https://obsidian.md) plugin that lets you create and manage countdowns using [Bases](https://help.obsidian.md/bases).
 
 ## Features
 
