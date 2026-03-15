@@ -28,8 +28,7 @@ formulas:
   label: 'if(formula.totalYears >= 1, formula.totalYears + if(formula.totalYears == 1, " year", " years"), if(formula.totalMonths >= 1, formula.totalMonths + if(formula.totalMonths == 1, " month", " months"), if(formula.totalDays >= 1, formula.totalDays + if(formula.totalDays == 1, " day", " days"), if(formula.totalHours >= 1, formula.totalHours + if(formula.totalHours == 1, " hour", " hours"), if(formula.totalMinutes >= 1, formula.totalMinutes + if(formula.totalMinutes == 1, " minute", " minutes"), formula.totalSeconds + if(formula.totalSeconds == 1, " second", " seconds"))))))'
   isPast: "formula.diffMs < 0"
   isFuture: "!formula.isPast"
-  isOverdue: "formula.isPast"
-  isToday: "formula.totalDays == 0"
+  isToday: "formula.totalDays == 0 && !formula.isPast"
   isThisWeek: "formula.totalDays >= 0 && formula.totalDays <= 7 && !formula.isPast"
   isThisMonth: "formula.totalDays >= 0 && formula.totalDays <= 30 && !formula.isPast"
   relative: 'if(formula.isPast, formula.label + " ago", "in " + formula.label)'
