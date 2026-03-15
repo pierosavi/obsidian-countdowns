@@ -74,25 +74,6 @@ export class CountdownCreationModal extends Modal {
 				}
 			}));
 
-		new Setting(contentEl)
-			.setName('Content')
-			.setDesc((() => {
-				const frag = document.createDocumentFragment();
-				frag.append(
-					'The content of the countdown note.',
-					document.createElement('br'),
-					'You can use Markdown here.'
-				);
-				return frag;
-			})())
-			.addTextArea(text => {
-				text
-					.setPlaceholder('Countdown content')
-					.onChange(value => { newCountdown.content = value; });
-				text.inputEl.rows = 6;
-				text.inputEl.cols = 25;
-			});
-
 		let customRepeatSetting: Setting;
 
 		new Setting(contentEl)
@@ -136,6 +117,25 @@ export class CountdownCreationModal extends Modal {
 					newCountdown.repeat = value.trim() || null;
 				}));
 		customRepeatSetting.settingEl.hide();
+
+		new Setting(contentEl)
+			.setName('Content')
+			.setDesc((() => {
+				const frag = document.createDocumentFragment();
+				frag.append(
+					'The content of the countdown note.',
+					document.createElement('br'),
+					'You can use Markdown here.'
+				);
+				return frag;
+			})())
+			.addTextArea(text => {
+				text
+					.setPlaceholder('Countdown content')
+					.onChange(value => { newCountdown.content = value; });
+				text.inputEl.rows = 6;
+				text.inputEl.cols = 25;
+			});
 
 		new Setting(contentEl)
 			.setDesc('A base view will be created in your bases folder on first use.')
