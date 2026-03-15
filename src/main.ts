@@ -59,6 +59,7 @@ export default class CountdownsPlugin extends Plugin {
 		this.registerEvent(
 			this.app.metadataCache.on('changed', (file) => {
 				if (this.isCountdownNote(file)) {
+					void this.refreshNextDate(file);
 					this.intervalManager?.scheduleEvaluate();
 				}
 			})
