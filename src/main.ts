@@ -89,11 +89,10 @@ export default class CountdownsPlugin extends Plugin {
 
 	/** Scan all countdown notes and update any with a stale nextDate. */
 	async refreshStaleNotes() {
-		const today = moment().format('YYYY-MM-DD');
 		for (const file of this.getCountdownNotes()) {
 			const fm = this.app.metadataCache.getFileCache(file)?.frontmatter;
 			if (!fm?.date || !fm.repeat) continue;
-			if (!fm.nextDate || fm.nextDate < today)
+			if (!fm.nextDate || moment(fm.nextDate as string).isBefore(moment(), 'minute'))
 				await this.refreshNextDate(file);
 		}
 	}
@@ -102,9 +101,11 @@ export default class CountdownsPlugin extends Plugin {
 	async refreshNextDate(file: TFile) {
 		await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
 			if (!fm.date) return;
-			const dtstart = moment(fm.date as string, 'YYYY-MM-DD').toDate();
+			const dateStr = fm.date as string;
+			const dtstart = moment(dateStr).toDate();
 			const next = effectiveDate(dtstart, (fm.repeat as string) ?? null);
-			const nextStr = moment(next).format('YYYY-MM-DD');
+			const fmt = hasTime(dateStr) ? 'YYYY-MM-DDTHH:mm' : 'YYYY-MM-DD';
+			const nextStr = moment(next).format(fmt);
 			if (fm.nextDate === nextStr) return;
 			fm.nextDate = nextStr;
 		});
@@ -137,7 +138,8 @@ class CountdownCreationModal extends Modal {
 		contentEl.createEl('h2', {text: 'Create a new countdown'});
 
 		const today = moment().format('YYYY-MM-DD');
-		const newCountdown: Countdown = { name: '', content: '', date: new Date(), repeat: null };
+		const nowFull = moment().format('YYYY-MM-DDTHH:mm');
+		const newCountdown: Countdown = { name: '', content: '', date: new Date(), time: null, repeat: null };
 
 		new Setting(contentEl)
 			.setName('Name')
@@ -146,14 +148,40 @@ class CountdownCreationModal extends Modal {
 				.setPlaceholder('Countdown name')
 				.onChange(value => { newCountdown.name = value.trim(); }));
 
+		let dateInput: HTMLInputElement;
+
 		new Setting(contentEl)
 			.setName('Date')
 			.setDesc('The target date for this countdown.')
 			.addText(text => {
-				text.inputEl.type = 'date';
-				text.inputEl.value = today;
-				text.onChange(value => { newCountdown.date = moment(value, 'YYYY-MM-DD').toDate(); });
+				dateInput = text.inputEl;
+				dateInput.type = 'date';
+				dateInput.value = today;
+				text.onChange(value => {
+					const m = moment(value);
+					newCountdown.date = m.toDate();
+					newCountdown.time = value.includes('T') ? m.format('HH:mm') : null;
+				});
 			});
+
+		new Setting(contentEl)
+			.setName('Include time')
+			.setDesc('Set a specific time for the countdown.')
+			.addToggle(toggle => toggle.onChange(enabled => {
+				if (enabled) {
+					dateInput.type = 'datetime-local';
+					dateInput.value = nowFull;
+					const m = moment(nowFull);
+					newCountdown.date = m.toDate();
+					newCountdown.time = m.format('HH:mm');
+				} else {
+					const currentDate = moment(dateInput.value).format('YYYY-MM-DD');
+					dateInput.type = 'date';
+					dateInput.value = currentDate;
+					newCountdown.date = moment(currentDate).toDate();
+					newCountdown.time = null;
+				}
+			}));
 
 		new Setting(contentEl)
 			.setName('Content')
@@ -231,9 +259,9 @@ class CountdownCreationModal extends Modal {
 						// Obsidian infers the property as a date from this format, enabling Bases date queries.
 						// repeat stores an RRULE string (RFC 5545) for recurring countdowns.
 						await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
-							fm.date = moment(newCountdown.date).format('YYYY-MM-DD');
+							fm.date = formatDateForFrontmatter(newCountdown.date, newCountdown.time);
 							if (newCountdown.repeat) fm.repeat = newCountdown.repeat;
-							fm.nextDate = moment(effectiveDate(newCountdown.date, newCountdown.repeat)).format('YYYY-MM-DD');
+							fm.nextDate = formatDateForFrontmatter(effectiveDate(newCountdown.date, newCountdown.repeat), newCountdown.time);
 							if (this.settings.countdownTag) fm.tags = [this.settings.countdownTag];
 						});
 						this.close();
@@ -260,8 +288,22 @@ interface Countdown {
 	name: string;
 	/** Markdown body of the note. */
 	content: string;
-	/** Target date of the countdown. Serialised as a YYYY-MM-DD string in frontmatter (YAML has no native date type). */
+	/** Target date of the countdown. */
 	date: Date;
+	/** Optional time string in HH:mm format, or null for date-only countdowns. */
+	time: string | null;
 	/** Optional RRULE string (RFC 5545) for recurring countdowns, e.g. "RRULE:FREQ=YEARLY". */
 	repeat: string | null;
+}
+
+/** Format a Date for frontmatter, including time if `time` is set. */
+function formatDateForFrontmatter(d: Date, time: string | null): string {
+	return time
+		? moment(d).format('YYYY-MM-DDTHH:mm')
+		: moment(d).format('YYYY-MM-DD');
+}
+
+/** Detect whether a frontmatter date string includes a time component. */
+function hasTime(dateStr: string): boolean {
+	return dateStr.includes('T');
 }

@@ -202,6 +202,30 @@ describe('IntervalManager', () => {
 		manager.stop();
 	});
 
+	it('handles datetime strings with time component', () => {
+		vi.setSystemTime(new Date('2026-03-16T14:25:00'));
+		const file = mockFile('countdown/timed.md');
+		const { triggered, deps } = createMockDeps([
+			{ file, nextDate: '2026-03-16T14:30' }, // 5 minutes away → 1min interval
+		]);
+
+		const manager = new IntervalManager(deps);
+		expect(triggered).toContain(file.path);
+		manager.stop();
+	});
+
+	it('does not touch datetime targets more than 1 week away', () => {
+		vi.setSystemTime(new Date('2026-03-15T12:00:00'));
+		const file = mockFile('countdown/far-timed.md');
+		const { triggered, deps } = createMockDeps([
+			{ file, nextDate: '2026-03-25T09:00' }, // ~10 days away
+		]);
+
+		const manager = new IntervalManager(deps);
+		expect(triggered).not.toContain(file.path);
+		manager.stop();
+	});
+
 	it('stop cancels pending timeouts', () => {
 		vi.setSystemTime(new Date('2026-03-15T23:59:00'));
 		const file = mockFile('countdown/s.md');

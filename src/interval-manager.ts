@@ -81,7 +81,7 @@ export class IntervalManager {
 			const dateStr = (fm?.nextDate ?? fm?.date) as string | undefined;
 			if (!dateStr) continue;
 
-			const rawDiff = moment(dateStr, 'YYYY-MM-DD').valueOf() - now;
+			const rawDiff = moment(dateStr).valueOf() - now;
 			const diffMs = Math.abs(rawDiff);
 			const interval = intervalForDiff(diffMs);
 
