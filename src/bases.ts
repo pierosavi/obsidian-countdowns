@@ -32,10 +32,19 @@ formulas:
   isThisWeek: "formula.totalDays >= 0 && formula.totalDays <= 7 && !formula.isPast"
   isThisMonth: "formula.totalDays >= 0 && formula.totalDays <= 30 && !formula.isPast"
   hasTime: "number(nextDate) != number(nextDate.date())"
-  relative: 'if(!formula.hasTime && formula.totalDays == 0 && formula.isPast, "Today", if(formula.isPast, formula.label + " ago", "In " + formula.label))'
+  calendarDays: "(number(nextDate.date()) - number(today())) / 86400000"
+  absCalendarDays: "formula.calendarDays.abs()"
+  calendarMonths: "(formula.absCalendarDays / 30).floor()"
+  calendarYears: "(formula.absCalendarDays / 365).floor()"
+  calendarLabel: 'if(formula.calendarYears >= 1, formula.calendarYears + if(formula.calendarYears == 1, " year", " years"), if(formula.calendarMonths >= 1, formula.calendarMonths + if(formula.calendarMonths == 1, " month", " months"), formula.absCalendarDays + if(formula.absCalendarDays == 1, " day", " days")))'
+  calendarDaysLabel: 'formula.absCalendarDays + if(formula.absCalendarDays == 1, " day", " days")'
+  relative: 'if(!formula.hasTime && formula.calendarDays == 0, "Today", if(!formula.hasTime, if(formula.calendarDays < 0, formula.calendarLabel + " ago", "In " + formula.calendarLabel), if(formula.isPast, formula.label + " ago", "In " + formula.label)))'
+  relativeDays: 'if(formula.calendarDays == 0, "Today", if(formula.calendarDays < 0, formula.calendarDaysLabel + " ago", "In " + formula.calendarDaysLabel))'
 properties:
   formula.relative:
     displayName: Relative
+  formula.relativeDays:
+    displayName: Relative Days
   nextDate:
     displayName: Next Date
 views:
