@@ -28,16 +28,16 @@ formulas:
   label: 'if(formula.totalYears >= 1, formula.totalYears + if(formula.totalYears == 1, " year", " years"), if(formula.totalMonths >= 1, formula.totalMonths + if(formula.totalMonths == 1, " month", " months"), if(formula.totalDays >= 1, formula.totalDays + if(formula.totalDays == 1, " day", " days"), if(formula.totalHours >= 1, formula.totalHours + if(formula.totalHours == 1, " hour", " hours"), if(formula.totalMinutes >= 1, formula.totalMinutes + if(formula.totalMinutes == 1, " minute", " minutes"), formula.totalSeconds + if(formula.totalSeconds == 1, " second", " seconds"))))))'
   isPast: "formula.diffMs < 0"
   isFuture: "!formula.isPast"
-  isToday: "formula.totalDays == 0 && !formula.isPast"
-  isThisWeek: "formula.totalDays >= 0 && formula.totalDays <= 7 && !formula.isPast"
-  isThisMonth: "formula.totalDays >= 0 && formula.totalDays <= 30 && !formula.isPast"
   hasTime: "number(nextDate) != number(nextDate.date())"
   calendarDays: "(number(nextDate.date()) - number(today())) / 86400000"
   absCalendarDays: "formula.calendarDays.abs()"
   calendarMonths: "(formula.absCalendarDays / 30).floor()"
   calendarYears: "(formula.absCalendarDays / 365).floor()"
-  calendarLabel: 'if(formula.calendarYears >= 1, formula.calendarYears + if(formula.calendarYears == 1, " year", " years"), if(formula.calendarMonths >= 1, formula.calendarMonths + if(formula.calendarMonths == 1, " month", " months"), formula.absCalendarDays + if(formula.absCalendarDays == 1, " day", " days")))'
   calendarDaysLabel: 'formula.absCalendarDays + if(formula.absCalendarDays == 1, " day", " days")'
+  calendarLabel: 'if(formula.calendarYears >= 1, formula.calendarYears + if(formula.calendarYears == 1, " year", " years"), if(formula.calendarMonths >= 1, formula.calendarMonths + if(formula.calendarMonths == 1, " month", " months"), formula.calendarDaysLabel))'
+  isToday: "formula.calendarDays == 0"
+  isThisWeek: "formula.calendarDays >= 0 && formula.calendarDays <= 7"
+  isThisMonth: "formula.calendarDays >= 0 && formula.calendarDays <= 30"
   relative: 'if(!formula.hasTime && formula.calendarDays == 0, "Today", if(!formula.hasTime, if(formula.calendarDays < 0, formula.calendarLabel + " ago", "In " + formula.calendarLabel), if(formula.isPast, formula.label + " ago", "In " + formula.label)))'
   relativeDays: 'if(formula.calendarDays == 0, "Today", if(formula.calendarDays < 0, formula.calendarDaysLabel + " ago", "In " + formula.calendarDaysLabel))'
 properties:
