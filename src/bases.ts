@@ -31,7 +31,8 @@ formulas:
   isToday: "formula.totalDays == 0 && !formula.isPast"
   isThisWeek: "formula.totalDays >= 0 && formula.totalDays <= 7 && !formula.isPast"
   isThisMonth: "formula.totalDays >= 0 && formula.totalDays <= 30 && !formula.isPast"
-  relative: 'if(formula.isPast, formula.label + " ago", "in " + formula.label)'
+  hasTime: "number(nextDate) != number(nextDate.date())"
+  relative: 'if(!formula.hasTime && formula.totalDays == 0 && formula.isPast, "Today", if(formula.isPast, formula.label + " ago", "In " + formula.label))'
 properties:
   formula.relative:
     displayName: Relative
